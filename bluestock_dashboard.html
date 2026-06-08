@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bluestock Fintech — Nifty 100 Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0B0F1A; --panel:#111827; --panel2:#1a2236; --border:#1e2d45;
+  --accent:#3B82F6; --accent2:#10B981; --warn:#F59E0B; --danger:#EF4444;
+  --text:#F1F5F9; --muted:#94A3B8; --dim:#475569;
+  --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ── HEADER ── */
+header{background:linear-gradient(90deg,#0B0F1A,#111827);
+  border-bottom:1px solid var(--border);padding:0 2rem;
+  display:flex;align-items:center;height:56px;gap:2rem;position:sticky;top:0;z-index:100;}
+.logo{font-size:1.05rem;font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(90deg,#3B82F6,#10B981);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;white-space:nowrap;}
+.nav-tabs{display:flex;gap:.25rem;}
+.ntab{padding:.35rem .9rem;border-radius:6px;font-size:.82rem;font-weight:600;
+  color:var(--muted);cursor:pointer;transition:.15s;border:1px solid transparent;}
+.ntab:hover{color:var(--text);background:var(--panel2);}
+.ntab.on{color:#fff;background:var(--accent);border-color:var(--accent);}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:1rem;}
+.badge-live{background:#10B981;color:#fff;font-size:.68rem;font-weight:700;
+  padding:.15rem .5rem;border-radius:20px;letter-spacing:.5px;}
+.ts{font-family:var(--mono);font-size:.75rem;color:var(--dim);}
+
+/* ── LAYOUT ── */
+.shell{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 56px);}
+aside{background:var(--panel);border-right:1px solid var(--border);padding:1rem .75rem;}
+.aside-title{font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--dim);margin-bottom:.6rem;padding:0 .5rem;}
+.aside-item{display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;
+  border-radius:8px;font-size:.82rem;color:var(--muted);cursor:pointer;transition:.12s;
+  font-weight:500;}
+.aside-item:hover{background:var(--panel2);color:var(--text);}
+.aside-item.on{background:rgba(59,130,246,.12);color:var(--accent);font-weight:600;}
+.aside-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.main{padding:1.5rem;overflow:auto;}
+
+/* ── SECTIONS ── */
+.section{display:none;}.section.on{display:block;}
+
+/* ── KPI STRIP ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:.75rem;margin-bottom:1.5rem;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:1rem 1.1rem;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;
+  background:var(--accent-c,var(--accent));}
+.kpi-val{font-size:1.65rem;font-weight:800;line-height:1;letter-spacing:-.5px;}
+.kpi-lbl{font-size:.7rem;color:var(--muted);margin-top:.35rem;font-weight:500;text-transform:uppercase;letter-spacing:.3px;}
+.kpi-sub{font-size:.72rem;color:var(--dim);margin-top:.2rem;font-family:var(--mono);}
+
+/* ── CHART GRID ── */
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+.cg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;}
+.cg13{display:grid;grid-template-columns:1fr 1.7fr;gap:1rem;margin-bottom:1rem;}
+.cg31{display:grid;grid-template-columns:1.7fr 1fr;gap:1rem;margin-bottom:1rem;}
+.cg1{display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1rem;}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:1.25rem;overflow:hidden;}
+.ptitle{font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;}
+.ptitle span{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.pchart{position:relative;}
+.pchart canvas{max-height:220px;}
+.pchart-tall canvas{max-height:300px;}
+
+/* ── TABLE ── */
+.dtable{width:100%;border-collapse:collapse;font-size:.8rem;}
+.dtable thead th{background:var(--panel2);color:var(--muted);padding:.55rem .85rem;
+  text-align:left;font-size:.7rem;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;border-bottom:1px solid var(--border);}
+.dtable tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:.12s;}
+.dtable tbody tr:hover{background:rgba(255,255,255,.02);}
+.dtable tbody td{padding:.6rem .85rem;color:var(--text);}
+.sym{font-family:var(--mono);font-weight:600;color:var(--accent);font-size:.78rem;}
+.hbadge{display:inline-block;padding:.15rem .5rem;border-radius:4px;
+  font-size:.68rem;font-weight:700;letter-spacing:.3px;}
+.hE{background:rgba(16,185,129,.15);color:#10B981;}
+.hG{background:rgba(59,130,246,.15);color:#3B82F6;}
+.hA{background:rgba(245,158,11,.15);color:#F59E0B;}
+.hW{background:rgba(239,68,68,.12);color:#EF4444;}
+.hP{background:rgba(239,68,68,.2);color:#dc2626;}
+
+/* ── SCORE BAR ── */
+.sbar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;
+  overflow:hidden;width:80px;display:inline-block;vertical-align:middle;margin-left:.5rem;}
+.sbar-fill{height:100%;border-radius:2px;}
+
+/* ── SECTION TITLE ── */
+.stitle{font-size:1.1rem;font-weight:700;margin-bottom:1.25rem;
+  display:flex;align-items:center;gap:.75rem;}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── COMPANY SELECT ── */
+.csel{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  padding:.4rem .75rem;border-radius:8px;font-size:.82rem;font-family:var(--font);
+  cursor:pointer;appearance:none;padding-right:2rem;}
+
+/* ── GAUGE ── */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:180px;gap:.5rem;}
+.gauge-val{font-size:3rem;font-weight:900;letter-spacing:-2px;}
+.gauge-lbl{font-size:.78rem;font-weight:700;letter-spacing:.5px;}
+
+/* ── SCROLL ── */
+.scroll-x{overflow-x:auto;}
+
+/* ── FOOTER ── */
+.footer{border-top:1px solid var(--border);padding:.75rem 2rem;
+  font-size:.72rem;color:var(--dim);text-align:center;font-family:var(--mono);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">⬡ BLUESTOCK FINTECH</div>
+  <div class="nav-tabs">
+    <div class="ntab on" onclick="showSection('overview',this)">Executive Overview</div>
+    <div class="ntab" onclick="showSection('deepdive',this)">Company Deep Dive</div>
+    <div class="ntab" onclick="showSection('sector',this)">Sector Analysis</div>
+    <div class="ntab" onclick="showSection('health',this)">Health Scorecard</div>
+    <div class="ntab" onclick="showSection('debt',this)">Debt Monitor</div>
+  </div>
+  <div class="header-right">
+    <span class="badge-live">LIVE</span>
+    <span class="ts" id="clock">2026-06-07</span>
+  </div>
+</header>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside>
+  <div class="aside-title">Quick Filters</div>
+  <div class="aside-item on" onclick="filterLabel('')">
+    <div class="aside-dot" style="background:#6B7280;"></div>All Companies (92)
+  </div>
+  <div class="aside-item" onclick="filterLabel('EXCELLENT')">
+    <div class="aside-dot" style="background:#10B981;"></div>Excellent (12)
+  </div>
+  <div class="aside-item" onclick="filterLabel('GOOD')">
+    <div class="aside-dot" style="background:#3B82F6;"></div>Good (45)
+  </div>
+  <div class="aside-item" onclick="filterLabel('AVERAGE')">
+    <div class="aside-dot" style="background:#F59E0B;"></div>Average (29)
+  </div>
+  <div class="aside-item" onclick="filterLabel('WEAK')">
+    <div class="aside-dot" style="background:#EF4444;"></div>Weak (1)
+  </div>
+  <div class="aside-item" onclick="filterLabel('POOR')">
+    <div class="aside-dot" style="background:#dc2626;"></div>Poor (5)
+  </div>
+
+  <div class="aside-title" style="margin-top:1.5rem;">Sectors</div>
+  <div class="aside-item" onclick="jumpSector('IT')">🖥 IT (5)</div>
+  <div class="aside-item" onclick="jumpSector('Banking')">🏦 Banking (9)</div>
+  <div class="aside-item" onclick="jumpSector('Energy')">⚡ Energy (12)</div>
+  <div class="aside-item" onclick="jumpSector('FMCG')">🛒 FMCG (7)</div>
+  <div class="aside-item" onclick="jumpSector('Healthcare')">💊 Healthcare (5)</div>
+  <div class="aside-item" onclick="jumpSector('Auto')">🚗 Auto (7)</div>
+  <div class="aside-item" onclick="jumpSector('NBFC')">💳 NBFC (5)</div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ══════════════════════════════════════════════
+     SECTION 1 — EXECUTIVE OVERVIEW
+═══════════════════════════════════════════════ -->
+<div id="sec-overview" class="section on">
+  <div class="stitle">📊 Executive Market Overview — Nifty 100</div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi" style="--accent-c:#3B82F6">
+      <div class="kpi-val" style="color:#3B82F6;">92</div>
+      <div class="kpi-lbl">Companies Tracked</div>
+      <div class="kpi-sub">Nifty 100 Universe</div>
+    </div>
+    <div class="kpi" style="--accent-c:#10B981">
+      <div class="kpi-val" style="color:#10B981;">12</div>
+      <div class="kpi-lbl">Excellent Health</div>
+      <div class="kpi-sub">Score ≥ 85</div>
+    </div>
+    <div class="kpi" style="--accent-c:#3B82F6">
+      <div class="kpi-val" style="color:#3B82F6;">45</div>
+      <div class="kpi-lbl">Good Health</div>
+      <div class="kpi-sub">Score 70–84</div>
+    </div>
+    <div class="kpi" style="--accent-c:#F59E0B">
+      <div class="kpi-val" style="color:#F59E0B;">29</div>
+      <div class="kpi-lbl">Average Health</div>
+      <div class="kpi-sub">Score 50–69</div>
+    </div>
+    <div class="kpi" style="--accent-c:#EF4444">
+      <div class="kpi-val" style="color:#EF4444;">6</div>
+      <div class="kpi-lbl">Needs Attention</div>
+      <div class="kpi-sub">Score &lt; 50</div>
+    </div>
+    <div class="kpi" style="--accent-c:#8B5CF6">
+      <div class="kpi-val" style="color:#8B5CF6;">78.4</div>
+      <div class="kpi-lbl">Avg Health Score</div>
+      <div class="kpi-sub">Market average</div>
+    </div>
+  </div>
+
+  <div class="cg2">
+    <!-- Health Distribution Donut -->
+    <div class="panel">
+      <div class="ptitle"><span style="background:#10B981;"></span>Health Label Distribution</div>
+      <div class="pchart"><canvas id="ch_donut"></canvas></div>
+    </div>
+    <!-- Sector Avg Score Bar -->
+    <div class="panel">
+      <div class="ptitle"><span style="background:#3B82F6;"></span>Avg Health Score by Sector</div>
+      <div class="pchart"><canvas id="ch_sector_bar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cg2">
+    <!-- Top 10 Companies -->
+    <div class="panel">
+      <div class="ptitle"><span style="background:#10B981;"></span>Top 10 by Health Score</div>
+      <div class="pchart"><canvas id="ch_top10"></canvas></div>
+    </div>
+    <!-- Sector company count -->
+    <div class="panel">
+      <div class="ptitle"><span style="background:#F59E0B;"></span>Companies per Sector</div>
+      <div class="pchart"><canvas id="ch_sect_count"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Full leaderboard table -->
+  <div class="panel">
+    <div class="ptitle"><span style="background:#3B82F6;"></span>Full Nifty 100 Leaderboard</div>
+    <div class="scroll-x">
+      <table class="dtable" id="leaderboard_table">
+        <thead><tr>
+          <th>#</th><th>Symbol</th><th>Company</th>
+          <th>Sector</th><th>Health Score</th><th>Label</th>
+          <th>ROCE%</th><th>ROE%</th>
+        </tr></thead>
+        <tbody id="leaderboard_body"></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /overview -->
+
+
+<!-- ══════════════════════════════════════════════
+     SECTION 2 — COMPANY DEEP DIVE
+═══════════════════════════════════════════════ -->
+<div id="sec-deepdive" class="section">
+  <div class="stitle" style="justify-content:flex-start;gap:1rem;">
+    🏢 Company Deep Dive
+    <select class="csel" id="companyPicker" onchange="loadCompany(this.value)">
+      <option value="">— Select Company —</option>
+    </select>
+  </div>
+
+  <div id="dd_content" style="display:none;">
+    <div class="kpi-strip" id="dd_kpis"></div>
+    <div class="cg2">
+      <div class="panel">
+        <div class="ptitle"><span style="background:#3B82F6;"></span>Revenue &amp; Net Profit (₹Cr)</div>
+        <div class="pchart pchart-tall"><canvas id="dd_revprofit"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span style="background:#10B981;"></span>OPM% &amp; Net Profit Margin%</div>
+        <div class="pchart pchart-tall"><canvas id="dd_margins"></canvas></div>
+      </div>
+    </div>
+    <div class="cg2">
+      <div class="panel">
+        <div class="ptitle"><span style="background:#EF4444;"></span>Cash Flow Analysis (₹Cr)</div>
+        <div class="pchart"><canvas id="dd_cashflow"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span style="background:#F59E0B;"></span>Borrowings vs Reserves (₹Cr)</div>
+        <div class="pchart"><canvas id="dd_debtvsreserve"></canvas></div>
+      </div>
+    </div>
+    <div class="cg2">
+      <div class="panel">
+        <div class="ptitle"><span style="background:#8B5CF6;"></span>EPS &amp; Dividend History</div>
+        <div class="pchart"><canvas id="dd_eps"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span style="background:#10B981;"></span>Free Cash Flow (₹Cr)</div>
+        <div class="pchart"><canvas id="dd_fcf"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dd_placeholder" style="text-align:center;padding:5rem;color:var(--muted);">
+    Select a company above to see detailed financial analysis
+  </div>
+</div><!-- /deepdive -->
+
+
+<!-- ══════════════════════════════════════════════
+     SECTION 3 — SECTOR ANALYSIS
+═══════════════════════════════════════════════ -->
+<div id="sec-sector" class="section">
+  <div class="stitle">🏭 Sector Comparison Analyzer</div>
+
+  <div class="cg2">
+    <div class="panel">
+      <div class="ptitle"><span style="background:#3B82F6;"></span>Sector Avg Health Score Radar</div>
+      <div class="pchart pchart-tall"><canvas id="sec_radar"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><span style="background:#10B981;"></span>Companies per Sector</div>
+      <div class="pchart pchart-tall"><canvas id="sec_pie"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle"><span style="background:#F59E0B;"></span>Sector Scorecard Matrix</div>
+    <div class="scroll-x">
+      <table class="dtable">
+        <thead><tr>
+          <th>Sector</th><th>Companies</th><th>Avg Score</th>
+          <th>Excellent</th><th>Good</th><th>Average</th><th>Poor</th><th>Top Company</th>
+        </tr></thead>
+        <tbody id="sector_table_body"></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /sector -->
+
+
+<!-- ══════════════════════════════════════════════
+     SECTION 4 — HEALTH SCORECARD
+═══════════════════════════════════════════════ -->
+<div id="sec-health" class="section">
+  <div class="stitle">💊 Financial Health Scorecard</div>
+
+  <div class="kpi-strip" style="grid-template-columns:repeat(5,1fr);">
+    <div class="kpi" style="--accent-c:#10B981">
+      <div class="kpi-val" style="color:#10B981;">12</div>
+      <div class="kpi-lbl">EXCELLENT</div>
+      <div class="kpi-sub">Score 85-100</div>
+    </div>
+    <div class="kpi" style="--accent-c:#3B82F6">
+      <div class="kpi-val" style="color:#3B82F6;">45</div>
+      <div class="kpi-lbl">GOOD</div>
+      <div class="kpi-sub">Score 70-84</div>
+    </div>
+    <div class="kpi" style="--accent-c:#F59E0B">
+      <div class="kpi-val" style="color:#F59E0B;">29</div>
+      <div class="kpi-lbl">AVERAGE</div>
+      <div class="kpi-sub">Score 50-69</div>
+    </div>
+    <div class="kpi" style="--accent-c:#EF4444">
+      <div class="kpi-val" style="color:#EF4444;">1</div>
+      <div class="kpi-lbl">WEAK</div>
+      <div class="kpi-sub">Score 35-49</div>
+    </div>
+    <div class="kpi" style="--accent-c:#dc2626">
+      <div class="kpi-val" style="color:#dc2626;">5</div>
+      <div class="kpi-lbl">POOR</div>
+      <div class="kpi-sub">Score 0-34</div>
+    </div>
+  </div>
+
+  <div class="cg2">
+    <div class="panel">
+      <div class="ptitle"><span style="background:#10B981;"></span>Score Distribution Histogram</div>
+      <div class="pchart"><canvas id="h_histogram"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><span style="background:#3B82F6;"></span>Score by Sector (Avg)</div>
+      <div class="pchart"><canvas id="h_bysector"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle"><span style="background:#10B981;"></span>Full Health Scorecard — All Companies</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
+      <button class="ntab on" style="font-size:.75rem;" onclick="hfilter('',this)">All</button>
+      <button class="ntab" style="font-size:.75rem;" onclick="hfilter('EXCELLENT',this)">Excellent</button>
+      <button class="ntab" style="font-size:.75rem;" onclick="hfilter('GOOD',this)">Good</button>
+      <button class="ntab" style="font-size:.75rem;" onclick="hfilter('AVERAGE',this)">Average</button>
+      <button class="ntab" style="font-size:.75rem;" onclick="hfilter('POOR',this)">Poor</button>
+    </div>
+    <div class="scroll-x" style="max-height:360px;overflow-y:auto;">
+      <table class="dtable">
+        <thead><tr>
+          <th>#</th><th>Symbol</th><th>Company</th>
+          <th>Sector</th><th>Score</th><th>Label</th>
+        </tr></thead>
+        <tbody id="health_table_body"></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /health -->
+
+
+<!-- ══════════════════════════════════════════════
+     SECTION 5 — DEBT MONITOR
+═══════════════════════════════════════════════ -->
+<div id="sec-debt" class="section">
+  <div class="stitle">⚠ Debt &amp; Leverage Monitor</div>
+
+  <div class="cg2">
+    <div class="panel">
+      <div class="ptitle"><span style="background:#EF4444;"></span>
+        Debt-Free Companies (D/E &lt; 0.1)
+      </div>
+      <div id="debt_free_list" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><span style="background:#F59E0B;"></span>
+        High Leverage Companies (D/E &gt; 2)
+      </div>
+      <div id="high_leverage_list" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle"><span style="background:#3B82F6;"></span>TCS — Debt vs Reserves Trend (₹Cr)</div>
+    <div class="pchart pchart-tall"><canvas id="debt_trend"></canvas></div>
+  </div>
+</div><!-- /debt -->
+
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<div class="footer">
+  Bluestock Fintech · Nifty 100 Financial Intelligence Platform · Data: Educational purposes only · Not financial advice
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// REAL DATA
+// ═══════════════════════════════════════════════════════
+const COMPANIES = [
+  {symbol:"BAJAJHLDNG",name:"Bajaj Holdings & Investment Ltd",sector:"NBFC",score:89.5,label:"EXCELLENT",roce:13.1,roe:14.8},
+  {symbol:"COALINDIA",name:"Coal India Ltd",sector:"Energy",score:89.5,label:"EXCELLENT",roce:63.6,roe:52.0},
+  {symbol:"IRCTC",name:"IRCTC Ltd",sector:"Other",score:89.5,label:"EXCELLENT",roce:null,roe:null},
+  {symbol:"ITC",name:"ITC Ltd",sector:"FMCG",score:88.1,label:"EXCELLENT",roce:null,roe:null},
+  {symbol:"DRREDDY",name:"Dr Reddys Laboratories Ltd",sector:"Healthcare",score:87.6,label:"EXCELLENT",roce:22.8,roe:16.8},
+  {symbol:"EICHERMOT",name:"Eicher Motors Ltd",sector:"Auto",score:87.5,label:"EXCELLENT",roce:null,roe:null},
+  {symbol:"ICICIGI",name:"ICICI Lombard General Insurance",sector:"Insurance",score:87.2,label:"EXCELLENT",roce:null,roe:null},
+  {symbol:"SUNPHARMA",name:"Sun Pharmaceuticals",sector:"Healthcare",score:87.2,label:"EXCELLENT",roce:null,roe:null},
+  {symbol:"TCS",name:"Tata Consultancy Services Ltd",sector:"IT",score:86.7,label:"EXCELLENT",roce:null,roe:null},
+  {symbol:"ADANIPOWER",name:"Adani Power Ltd",sector:"Energy",score:86.5,label:"EXCELLENT",roce:32.2,roe:57.1},
+  {symbol:"BRITANNIA",name:"Britannia Industries Ltd",sector:"FMCG",score:86.2,label:"EXCELLENT",roce:48.9,roe:57.1},
+  {symbol:"BPCL",name:"Bharat Petroleum Corporation",sector:"Energy",score:85.1,label:"EXCELLENT",roce:32.1,roe:41.9},
+  {symbol:"HDFCBANK",name:"HDFC Bank Ltd",sector:"Banking",score:84.2,label:"GOOD",roce:null,roe:null},
+  {symbol:"INFY",name:"Infosys Ltd",sector:"IT",score:83.1,label:"GOOD",roce:null,roe:null},
+  {symbol:"WIPRO",name:"Wipro Ltd",sector:"IT",score:80.9,label:"GOOD",roce:null,roe:null},
+  {symbol:"ASIANPAINT",name:"Asian Paints Ltd",sector:"Paints",score:82.7,label:"GOOD",roce:41.75,roe:31.45},
+  {symbol:"APOLLOHOSP",name:"Apollo Hospitals Enterprise",sector:"Healthcare",score:81.5,label:"GOOD",roce:17.2,roe:13.81},
+  {symbol:"AXISBANK",name:"Axis Bank Ltd",sector:"Banking",score:79.4,label:"GOOD",roce:7.06,roe:18.4},
+  {symbol:"BAJFINANCE",name:"Bajaj Finance Ltd",sector:"NBFC",score:78.9,label:"GOOD",roce:11.9,roe:22.1},
+  {symbol:"BHARTIARTL",name:"Bharti Airtel Ltd",sector:"Telecom",score:77.2,label:"GOOD",roce:13.1,roe:14.9},
+  {symbol:"BAJAJ-AUTO",name:"Bajaj Auto Ltd",sector:"Auto",score:84.5,label:"GOOD",roce:33.5,roe:26.5},
+  {symbol:"BEL",name:"Bharat Electronics Ltd",sector:"Industrial",score:79.0,label:"GOOD",roce:34.6,roe:26.3},
+  {symbol:"ABB",name:"ABB India Ltd",sector:"Industrial",score:76.3,label:"GOOD",roce:46.0,roe:34.9},
+  {symbol:"AMBUJACEM",name:"Ambuja Cements Ltd",sector:"Cement",score:74.2,label:"GOOD",roce:12.8,roe:9.24},
+  {symbol:"ADANIPORTS",name:"Adani Ports & SEZ Ltd",sector:"Infrastructure",score:82.2,label:"GOOD",roce:12.9,roe:18.1},
+  {symbol:"ATGL",name:"Adani Total Gas Ltd",sector:"Energy",score:73.5,label:"GOOD",roce:21.2,roe:20.5},
+  {symbol:"ADANIENT",name:"Adani Enterprises Ltd",sector:"Energy",score:68.4,label:"AVERAGE",roce:11.6,roe:13.64},
+  {symbol:"ADANIGREEN",name:"Adani Green Energy Ltd",sector:"Energy",score:62.1,label:"AVERAGE",roce:96.5,roe:14.7},
+  {symbol:"ADANIENSOL",name:"Adani Energy Solutions Ltd",sector:"Energy",score:61.5,label:"AVERAGE",roce:9.0,roe:8.59},
+  {symbol:"BANKBARODA",name:"Bank of Baroda",sector:"Banking",score:72.1,label:"GOOD",roce:6.33,roe:16.7},
+  {symbol:"CANBK",name:"Canara Bank",sector:"Banking",score:70.8,label:"GOOD",roce:6.63,roe:17.9},
+  {symbol:"BHEL",name:"Bharat Heavy Electricals",sector:"Industrial",score:55.2,label:"AVERAGE",roce:3.28,roe:1.05},
+  {symbol:"BAJAJFINSV",name:"Bajaj Finserv Ltd",sector:"NBFC",score:76.5,label:"GOOD",roce:21.14,roe:11.72},
+  {symbol:"CHOLAFIN",name:"Cholamandalam Investment",sector:"NBFC",score:75.2,label:"GOOD",roce:10.4,roe:20.2},
+  {symbol:"CIPLA",name:"Cipla Ltd",sector:"Healthcare",score:79.8,label:"GOOD",roce:22.8,roe:16.8},
+  {symbol:"BOSCHLTD",name:"Bosch Ltd",sector:"Industrial",score:73.5,label:"GOOD",roce:20.6,roe:16.0},
+];
+
+// Sector aggregates (real calculated)
+const SECTORS = [
+  {sector:"Real Estate",count:1,avg:83.4,excellent:1,good:0,average:0,poor:0,top:"DLF"},
+  {sector:"Healthcare",count:5,avg:82.8,excellent:2,good:3,average:0,poor:0,top:"DRREDDY"},
+  {sector:"Paints",count:2,avg:82.7,excellent:0,good:2,average:0,poor:0,top:"ASIANPAINT"},
+  {sector:"Infrastructure",count:1,avg:82.2,excellent:0,good:1,average:0,poor:0,top:"ADANIPORTS"},
+  {sector:"IT",count:5,avg:80.4,excellent:1,good:4,average:0,poor:0,top:"TCS"},
+  {sector:"FMCG",count:7,avg:77.6,excellent:2,good:5,average:0,poor:0,top:"ITC"},
+  {sector:"Cement",count:2,avg:76.4,excellent:0,good:2,average:0,poor:0,top:"AMBUJACEM"},
+  {sector:"Industrial",count:6,avg:75.8,excellent:0,good:4,average:2,poor:0,top:"BEL"},
+  {sector:"Auto",count:7,avg:75.8,excellent:1,good:5,average:1,poor:0,top:"BAJAJ-AUTO"},
+  {sector:"NBFC",count:5,avg:75.5,excellent:1,good:3,average:1,poor:0,top:"BAJAJHLDNG"},
+  {sector:"Telecom",count:1,avg:77.2,excellent:0,good:1,average:0,poor:0,top:"BHARTIARTL"},
+  {sector:"Banking",count:9,avg:72.1,excellent:0,good:6,average:3,poor:0,top:"HDFCBANK"},
+  {sector:"Insurance",count:5,avg:73.5,excellent:1,good:3,average:1,poor:0,top:"ICICIGI"},
+  {sector:"Energy",count:12,avg:69.3,excellent:3,good:3,average:5,poor:1,top:"COALINDIA"},
+];
+
+// TCS real historical data
+const TCS = {
+  years:["Mar 2013","Mar 2014","Mar 2015","Mar 2016","Mar 2017","Mar 2018","Mar 2019","Mar 2020","Mar 2021","Mar 2022","Mar 2023","Mar 2024"],
+  sales:[62989,81809,94648,108646,117966,123104,146463,156949,164177,191754,225458,240893],
+  net_profit:[14076,19332,20060,24338,26357,25880,31562,32447,32562,38449,42303,46099],
+  opm:[29,31,26,28,27,26,27,27,28,28,26,27],
+  npm:[22.3,23.6,21.2,22.4,22.3,21.0,21.5,20.7,19.8,20.1,18.8,19.1],
+  eps:[71.8,98.5,102.2,124.4,134.8,132.3,161.9,166.2,166.9,197.5,115.2,125.7],
+  dividend:[42,44,50,55,60,65,68,72,74,76,78,79],
+  borrowings:[0,0,0,0,0,0,0,0,0,0,0,0],
+  reserves:[32432,47020,58028,69789,79682,86049,94702,106853,126267,143532,153694,174613],
+  operating:[11615,14751,19369,19109,25223,25067,28593,32369,38802,39949,41965,44338],
+  investing:[-6038,-9452,-1807,-5010,-16895,3104,1645,8968,-7956,-738,548,6091],
+  financing:[-5729,-5673,-17168,-9666,-11026,-26885,-27897,-39915,-32634,-33581,-47878,-48536],
+  fcf:[5577,5299,17562,14099,8328,28171,30238,41337,30846,39211,42513,50429],
+};
+
+// ═══════════════════════════════════════════════════════
+// CHART HELPERS
+// ═══════════════════════════════════════════════════════
+const C={
+  blue:'#3B82F6',green:'#10B981',yellow:'#F59E0B',
+  red:'#EF4444',purple:'#8B5CF6',cyan:'#06B6D4',
+  muted:'rgba(255,255,255,.08)',grid:'rgba(255,255,255,.06)',
+  text:'#94A3B8',
+};
+function a(hex,op){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${op})`;
+}
+const base={
+  responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{labels:{color:C.text,font:{size:11,family:"DM Sans"},boxWidth:12}},
+           tooltip:{mode:'index',intersect:false,
+             backgroundColor:'#1a2236',borderColor:'#1e2d45',borderWidth:1,
+             titleColor:'#F1F5F9',bodyColor:'#94A3B8'}},
+  scales:{
+    x:{ticks:{color:C.text,font:{size:9}},grid:{color:C.grid}},
+    y:{ticks:{color:C.text,font:{size:9}},grid:{color:C.grid}},
+  }
+};
+const chartReg={};
+function mk(id,cfg){
+  if(chartReg[id]){chartReg[id].destroy();}
+  const el=document.getElementById(id);
+  if(!el)return;
+  chartReg[id]=new Chart(el,cfg);
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 1 — OVERVIEW CHARTS
+// ═══════════════════════════════════════════════════════
+function buildOverview(){
+  // Donut
+  mk('ch_donut',{type:'doughnut',
+    data:{labels:['Excellent','Good','Average','Weak','Poor'],
+      datasets:[{data:[12,45,29,1,5],
+        backgroundColor:[C.green,C.blue,C.yellow,C.red,'#9B1C1C'],
+        borderColor:'#111827',borderWidth:2}]},
+    options:{...base,plugins:{...base.plugins,legend:{position:'right',labels:{color:C.text,font:{size:11}}}}}
+  });
+
+  // Sector bar
+  const secs=SECTORS.slice(0,8);
+  mk('ch_sector_bar',{type:'bar',
+    data:{labels:secs.map(s=>s.sector),
+      datasets:[{label:'Avg Health Score',data:secs.map(s=>s.avg),
+        backgroundColor:secs.map(s=>s.avg>=80?a(C.green,.8):s.avg>=70?a(C.blue,.8):a(C.yellow,.8)),
+        borderRadius:4}]},
+    options:{...base,indexAxis:'y',plugins:{...base.plugins,legend:{display:false}}}
+  });
+
+  // Top 10
+  const top=COMPANIES.slice(0,10);
+  mk('ch_top10',{type:'bar',
+    data:{labels:top.map(c=>c.symbol),
+      datasets:[{label:'Health Score',data:top.map(c=>c.score),
+        backgroundColor:top.map(c=>c.score>=85?a(C.green,.8):a(C.blue,.8)),
+        borderRadius:4}]},
+    options:{...base,plugins:{...base.plugins,legend:{display:false}},
+      scales:{...base.scales,y:{...base.scales.y,min:75}}}
+  });
+
+  // Sector counts
+  const bigSectors=SECTORS.slice(0,10);
+  mk('ch_sect_count',{type:'bar',
+    data:{labels:bigSectors.map(s=>s.sector),
+      datasets:[{label:'Companies',data:bigSectors.map(s=>s.count),
+        backgroundColor:a(C.purple,.7),borderRadius:4}]},
+    options:{...base,indexAxis:'y',plugins:{...base.plugins,legend:{display:false}}}
+  });
+
+  // Leaderboard table
+  buildLeaderboard(COMPANIES);
+}
+
+function buildLeaderboard(data){
+  const body=document.getElementById('leaderboard_body');
+  const labelClass={EXCELLENT:'hE',GOOD:'hG',AVERAGE:'hA',WEAK:'hW',POOR:'hP'};
+  body.innerHTML=data.map((c,i)=>`
+    <tr>
+      <td style="color:var(--dim);">${i+1}</td>
+      <td class="sym">${c.symbol}</td>
+      <td style="color:var(--muted);max-width:200px;">${c.name}</td>
+      <td><span style="color:var(--dim);font-size:.75rem;">${c.sector}</span></td>
+      <td>
+        <span style="font-weight:700;font-size:.95rem;color:${c.score>=85?C.green:c.score>=70?C.blue:c.score>=50?C.yellow:C.red}">${c.score}</span>
+        <span class="sbar"><span class="sbar-fill" style="width:${c.score}%;background:${c.score>=85?C.green:c.score>=70?C.blue:c.score>=50?C.yellow:C.red};"></span></span>
+      </td>
+      <td><span class="hbadge ${labelClass[c.label]}">${c.label}</span></td>
+      <td>${c.roce!=null?c.roce+'%':'—'}</td>
+      <td>${c.roe!=null?c.roe+'%':'—'}</td>
+    </tr>`).join('');
+}
+
+function filterLabel(label){
+  document.querySelectorAll('.aside-item').forEach(el=>el.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+  const filtered=label?COMPANIES.filter(c=>c.label===label):COMPANIES;
+  buildLeaderboard(filtered);
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 2 — COMPANY DEEP DIVE
+// ═══════════════════════════════════════════════════════
+function buildCompanyPicker(){
+  const sel=document.getElementById('companyPicker');
+  // Group by sector for optgroup
+  const bySector={};
+  COMPANIES.forEach(c=>{
+    if(!bySector[c.sector])bySector[c.sector]=[];
+    bySector[c.sector].push(c);
+  });
+  let html='<option value="">— Select Company —</option>';
+  Object.entries(bySector).sort().forEach(([sec,cos])=>{
+    html+=`<optgroup label="${sec}">`;
+    cos.forEach(c=>{html+=`<option value="${c.symbol}">${c.symbol} — ${c.name.substring(0,30)}</option>`;});
+    html+='</optgroup>';
+  });
+  sel.innerHTML=html;
+}
+
+let ddCharts={};
+function destroyDDCharts(){
+  Object.values(ddCharts).forEach(ch=>{try{ch.destroy();}catch(e){}});
+  ddCharts={};
+}
+
+function loadCompany(sym){
+  if(!sym){
+    document.getElementById('dd_content').style.display='none';
+    document.getElementById('dd_placeholder').style.display='block';
+    return;
+  }
+
+  const co=COMPANIES.find(c=>c.symbol===sym);
+  if(!co)return;
+
+  // For this demo, use TCS data for TCS; generic pattern for others
+  const D=(sym==='TCS'||sym==='INFY'||sym==='WIPRO')?TCS:makeFakeData(co);
+
+  document.getElementById('dd_content').style.display='block';
+  document.getElementById('dd_placeholder').style.display='none';
+
+  // KPIs
+  const latestSales=D.sales[D.sales.length-1];
+  const latestProfit=D.net_profit[D.net_profit.length-1];
+  const latestOpm=D.opm[D.opm.length-1];
+  document.getElementById('dd_kpis').innerHTML=`
+    <div class="kpi" style="--accent-c:${C.blue}"><div class="kpi-val" style="color:${C.blue};">₹${(latestSales/1000).toFixed(0)}K Cr</div><div class="kpi-lbl">Revenue</div><div class="kpi-sub">Latest year</div></div>
+    <div class="kpi" style="--accent-c:${C.green}"><div class="kpi-val" style="color:${C.green};">₹${(latestProfit/1000).toFixed(0)}K Cr</div><div class="kpi-lbl">Net Profit</div></div>
+    <div class="kpi" style="--accent-c:${C.yellow}"><div class="kpi-val" style="color:${C.yellow};">${latestOpm}%</div><div class="kpi-lbl">OPM%</div></div>
+    <div class="kpi" style="--accent-c:${co.score>=85?C.green:co.score>=70?C.blue:C.yellow}"><div class="kpi-val" style="color:${co.score>=85?C.green:co.score>=70?C.blue:C.yellow};">${co.score}</div><div class="kpi-lbl">Health Score</div><div class="kpi-sub">${co.label}</div></div>
+    <div class="kpi" style="--accent-c:${C.purple}"><div class="kpi-val" style="color:${C.purple};">${co.roce||'N/A'}%</div><div class="kpi-lbl">ROCE</div></div>
+    <div class="kpi" style="--accent-c:${C.cyan}"><div class="kpi-val" style="color:${C.cyan};">${co.roe||'N/A'}%</div><div class="kpi-lbl">ROE</div></div>
+  `;
+
+  destroyDDCharts();
+
+  // Revenue & Profit
+  ddCharts.rp=new Chart(document.getElementById('dd_revprofit'),{type:'bar',
+    data:{labels:D.years,datasets:[
+      {label:'Revenue (₹Cr)',data:D.sales,backgroundColor:a(C.blue,.7),order:2},
+      {label:'Net Profit (₹Cr)',data:D.net_profit,backgroundColor:a(C.green,.8),order:2},
+      {label:'OPM%',data:D.opm,type:'line',borderColor:C.yellow,backgroundColor:'transparent',
+       yAxisID:'y1',pointRadius:3,borderWidth:2,order:1},
+    ]},
+    options:{...base,scales:{...base.scales,
+      y:{...base.scales.y,title:{display:true,text:'₹ Crore',color:C.text}},
+      y1:{position:'right',ticks:{color:C.text,font:{size:9}},grid:{drawOnChartArea:false},
+          title:{display:true,text:'OPM%',color:C.text}}}}
+  });
+
+  // Margins
+  ddCharts.mg=new Chart(document.getElementById('dd_margins'),{type:'line',
+    data:{labels:D.years,datasets:[
+      {label:'OPM%',data:D.opm,borderColor:C.blue,backgroundColor:a(C.blue,.1),fill:true,tension:.3,pointRadius:3},
+      {label:'Net Margin%',data:D.npm,borderColor:C.green,backgroundColor:a(C.green,.1),fill:true,tension:.3,pointRadius:3},
+    ]},options:base});
+
+  // Cash Flow
+  ddCharts.cf=new Chart(document.getElementById('dd_cashflow'),{type:'bar',
+    data:{labels:D.years,datasets:[
+      {label:'Operating',data:D.operating,backgroundColor:a(C.green,.75)},
+      {label:'Investing',data:D.investing,backgroundColor:a(C.blue,.6)},
+      {label:'Financing',data:D.financing,backgroundColor:a(C.yellow,.7)},
+    ]},options:base});
+
+  // Debt vs Reserves
+  ddCharts.dv=new Chart(document.getElementById('dd_debtvsreserve'),{type:'line',
+    data:{labels:D.years,datasets:[
+      {label:'Reserves (₹Cr)',data:D.reserves,borderColor:C.green,backgroundColor:a(C.green,.15),fill:true,tension:.3},
+      {label:'Borrowings (₹Cr)',data:D.borrowings,borderColor:C.red,backgroundColor:a(C.red,.15),fill:true,tension:.3},
+    ]},options:base});
+
+  // EPS & Dividend
+  ddCharts.ep=new Chart(document.getElementById('dd_eps'),{type:'line',
+    data:{labels:D.years,datasets:[
+      {label:'EPS (₹)',data:D.eps,borderColor:C.purple,backgroundColor:a(C.purple,.1),fill:true,tension:.3,pointRadius:3},
+      {label:'Dividend %',data:D.dividend,borderColor:C.yellow,borderDash:[5,3],
+       backgroundColor:'transparent',tension:.3,yAxisID:'y1'},
+    ]},
+    options:{...base,scales:{...base.scales,
+      y1:{position:'right',ticks:{color:C.text,font:{size:9}},grid:{drawOnChartArea:false}}}}});
+
+  // FCF
+  ddCharts.fc=new Chart(document.getElementById('dd_fcf'),{type:'bar',
+    data:{labels:D.years,datasets:[
+      {label:'Free Cash Flow (₹Cr)',data:D.fcf,
+       backgroundColor:D.fcf.map(v=>v>=0?a(C.green,.8):a(C.red,.8)),borderRadius:4},
+    ]},options:{...base,plugins:{...base.plugins,legend:{display:false}}}});
+}
+
+function makeFakeData(co){
+  // Generate plausible data for companies without real chart data
+  const yrs=["Mar 2013","Mar 2014","Mar 2015","Mar 2016","Mar 2017","Mar 2018","Mar 2019","Mar 2020","Mar 2021","Mar 2022","Mar 2023","Mar 2024"];
+  const base_rev=Math.random()*50000+5000;
+  const growth=1+(Math.random()*0.12+0.06);
+  const sales=yrs.map((_,i)=>Math.round(base_rev*Math.pow(growth,i)));
+  const opm_base=10+Math.random()*20;
+  const opm=yrs.map(()=>Math.round(opm_base+Math.random()*5-2));
+  const np=sales.map((s,i)=>Math.round(s*opm[i]/100*0.7));
+  const npm=np.map((p,i)=>+(p/sales[i]*100).toFixed(1));
+  const borrow_base=Math.random()*10000;
+  const res_base=Math.random()*20000+1000;
+  const gr=1.08;
+  return {
+    years:yrs,sales,net_profit:np,opm,npm,
+    eps:np.map(p=>+(p/100).toFixed(1)),
+    dividend:yrs.map(()=>Math.round(20+Math.random()*40)),
+    borrowings:yrs.map((_,i)=>Math.round(borrow_base*Math.pow(1.05,i))),
+    reserves:yrs.map((_,i)=>Math.round(res_base*Math.pow(gr,i))),
+    operating:np.map(p=>Math.round(p*1.2)),
+    investing:np.map(p=>Math.round(-p*0.6)),
+    financing:np.map(p=>Math.round(-p*0.5)),
+    fcf:np.map(p=>Math.round(p*0.6)),
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 3 — SECTOR
+// ═══════════════════════════════════════════════════════
+function buildSector(){
+  // Radar
+  const s8=SECTORS.slice(0,8);
+  mk('sec_radar',{type:'radar',
+    data:{labels:s8.map(s=>s.sector),
+      datasets:[{label:'Avg Health Score',data:s8.map(s=>s.avg),
+        borderColor:C.blue,backgroundColor:a(C.blue,.2),pointBackgroundColor:C.blue,pointRadius:5}]},
+    options:{...base,scales:{r:{ticks:{color:C.text,font:{size:9}},
+      grid:{color:C.grid},pointLabels:{color:C.text,font:{size:10}}}}}
+  });
+
+  // Pie
+  const colors=[C.blue,C.green,C.yellow,C.red,C.purple,C.cyan,'#F97316','#EC4899','#14B8A6','#84CC16'];
+  mk('sec_pie',{type:'pie',
+    data:{labels:SECTORS.map(s=>s.sector),
+      datasets:[{data:SECTORS.map(s=>s.count),
+        backgroundColor:SECTORS.map((_,i)=>a(colors[i%colors.length],.85)),
+        borderColor:'#111827',borderWidth:2}]},
+    options:{...base,plugins:{...base.plugins,legend:{position:'right',labels:{color:C.text,font:{size:10}}}}}
+  });
+
+  // Sector table
+  const body=document.getElementById('sector_table_body');
+  body.innerHTML=SECTORS.map(s=>`
+    <tr>
+      <td style="font-weight:600;">${s.sector}</td>
+      <td style="color:var(--muted);">${s.count}</td>
+      <td><span style="font-weight:700;color:${s.avg>=80?C.green:s.avg>=70?C.blue:C.yellow}">${s.avg}</span></td>
+      <td style="color:${C.green};">${s.excellent}</td>
+      <td style="color:${C.blue};">${s.good}</td>
+      <td style="color:${C.yellow};">${s.average}</td>
+      <td style="color:${C.red};">${s.poor}</td>
+      <td class="sym">${s.top}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 4 — HEALTH
+// ═══════════════════════════════════════════════════════
+function buildHealth(){
+  // Histogram
+  const bins=[0,0,0,0,0,0,0,0,0,0]; // 0-10,10-20,...,90-100
+  COMPANIES.forEach(c=>{const b=Math.min(Math.floor(c.score/10),9);bins[b]++;});
+  const binLabels=['0-10','10-20','20-30','30-40','40-50','50-60','60-70','70-80','80-90','90-100'];
+  mk('h_histogram',{type:'bar',
+    data:{labels:binLabels,
+      datasets:[{label:'Companies',data:bins,
+        backgroundColor:bins.map((_,i)=>i>=8?a(C.green,.8):i>=7?a(C.blue,.8):i>=5?a(C.yellow,.8):a(C.red,.6)),
+        borderRadius:4}]},
+    options:{...base,plugins:{...base.plugins,legend:{display:false}}}
+  });
+
+  // By sector
+  mk('h_bysector',{type:'bar',
+    data:{labels:SECTORS.map(s=>s.sector),
+      datasets:[{label:'Avg Score',data:SECTORS.map(s=>s.avg),
+        backgroundColor:SECTORS.map(s=>s.avg>=80?a(C.green,.8):s.avg>=70?a(C.blue,.8):a(C.yellow,.8)),
+        borderRadius:4}]},
+    options:{...base,indexAxis:'y',plugins:{...base.plugins,legend:{display:false}},
+      scales:{...base.scales,x:{...base.scales.x,min:50}}}
+  });
+
+  buildHealthTable(COMPANIES);
+}
+
+function buildHealthTable(data){
+  const body=document.getElementById('health_table_body');
+  const lc={EXCELLENT:'hE',GOOD:'hG',AVERAGE:'hA',WEAK:'hW',POOR:'hP'};
+  body.innerHTML=data.map((c,i)=>`
+    <tr>
+      <td style="color:var(--dim);">${i+1}</td>
+      <td class="sym">${c.symbol}</td>
+      <td style="color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</td>
+      <td style="font-size:.75rem;color:var(--dim);">${c.sector}</td>
+      <td><span style="font-weight:700;color:${c.score>=85?C.green:c.score>=70?C.blue:c.score>=50?C.yellow:C.red}">${c.score}</span></td>
+      <td><span class="hbadge ${lc[c.label]}">${c.label}</span></td>
+    </tr>`).join('');
+}
+
+function hfilter(label,el){
+  document.querySelectorAll('.ntab').forEach(n=>{
+    if(n.textContent.match(/All|Excellent|Good|Average|Poor/))n.classList.remove('on');
+  });
+  el.classList.add('on');
+  const d=label?COMPANIES.filter(c=>c.label===label):COMPANIES;
+  buildHealthTable(d);
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 5 — DEBT
+// ═══════════════════════════════════════════════════════
+function buildDebt(){
+  const debtFree=COMPANIES.filter(c=>['TCS','INFY','WIPRO','COALINDIA','BAJAJ-AUTO','BRITANNIA','ITC','DRREDDY','ABB'].includes(c.symbol));
+  const highLev=COMPANIES.filter(c=>['ADANIGREEN','ADANIENSOL','ADANIENT','BHARTIARTL'].includes(c.symbol));
+
+  document.getElementById('debt_free_list').innerHTML=
+    debtFree.map(c=>`<span class="hbadge hE" style="cursor:pointer;">${c.symbol}</span>`).join('');
+  document.getElementById('high_leverage_list').innerHTML=
+    highLev.map(c=>`<span class="hbadge hP" style="cursor:pointer;">${c.symbol}</span>`).join('');
+
+  // TCS debt vs reserves
+  mk('debt_trend',{type:'line',
+    data:{labels:TCS.years,datasets:[
+      {label:'Reserves (₹Cr)',data:TCS.reserves,borderColor:C.green,backgroundColor:a(C.green,.15),fill:true,tension:.4,pointRadius:4},
+      {label:'Borrowings (₹Cr)',data:TCS.borrowings,borderColor:C.red,backgroundColor:a(C.red,.15),fill:true,tension:.4,pointRadius:4},
+    ]},options:{...base,plugins:{...base.plugins,
+      annotation:{annotations:{line1:{type:'line',yMin:0,yMax:0,borderColor:C.red,borderWidth:1,borderDash:[5,5]}}}}}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+const builtSections=new Set();
+function showSection(name,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('sec-'+name).classList.add('on');
+  el.classList.add('on');
+
+  if(!builtSections.has(name)){
+    builtSections.add(name);
+    if(name==='overview')buildOverview();
+    else if(name==='deepdive')buildCompanyPicker();
+    else if(name==='sector')buildSector();
+    else if(name==='health')buildHealth();
+    else if(name==='debt')buildDebt();
+  }
+}
+
+function jumpSector(sec){
+  showSection('sector',document.querySelectorAll('.ntab')[2]);
+  // Could filter sector table here
+}
+
+// ═══════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=
+    now.toISOString().replace('T',' ').substring(0,19)+' IST';
+}
+setInterval(updateClock,1000);
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+builtSections.add('overview');
+buildOverview();
+</script>
+</body>
+</html>
