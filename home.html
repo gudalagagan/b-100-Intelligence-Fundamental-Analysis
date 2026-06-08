@@ -1,0 +1,15 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path("",                       views.home,           name="home"),
+    path("companies/",             views.company_list,   name="company_list"),
+    path("company/<str:symbol>/",  views.company_detail, name="company_detail"),
+    path("compare/",               views.compare,        name="compare"),
+    path("screener/",              views.screener,        name="screener"),
+    path("sector/<str:name>/",     views.sector_detail,  name="sector_detail"),
+    # API
+    path("api/charts/<str:symbol>/", views.api_company_charts, name="api_charts"),
+    path("api/companies/",           views.api_companies,       name="api_companies"),
+    path("api/screener/",            views.api_screener,        name="api_screener"),
+]

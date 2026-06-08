@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ sector.sector }} Sector — Bluestock Fintech{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,var(--blue-dark),var(--blue-mid));
+            color:#fff;padding:2.5rem 2rem;margin-bottom:1.5rem;">
+  <div style="max-width:1280px;margin:0 auto;">
+    <div style="font-size:.85rem;opacity:.6;margin-bottom:.5rem;">
+      <a href="/" style="color:rgba(255,255,255,.7);text-decoration:none;">Home</a> › Sectors
+    </div>
+    <h1 style="font-size:2rem;font-weight:800;">{{ sector.sector }} Sector</h1>
+    <p style="opacity:.75;margin-top:.4rem;">
+      {{ sector.company_count }} companies · Average health score: {{ sector.avg_score }}
+    </p>
+  </div>
+</div>
+
+<div class="container" style="padding-top:0;">
+
+  <!-- SECTOR STATS -->
+  <div class="kpi-grid mb-2">
+    <div class="kpi">
+      <div class="kpi-value">{{ sector.company_count }}</div>
+      <div class="kpi-label">Companies</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">{{ sector.avg_score }}</div>
+      <div class="kpi-label">Avg Health Score</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">{{ sector.top_company|truncatechars:20 }}</div>
+      <div class="kpi-label">Top Performer</div>
+    </div>
+  </div>
+
+  <!-- COMPANY LIST -->
+  <h2 class="page-title">Companies in {{ sector.sector }}</h2>
+  <p class="page-sub">Ranked by health score</p>
+
+  <div class="company-cards">
+    {% for c in sector.companies %}
+    <a href="/company/{{ c.symbol }}/" class="company-card">
+      <div class="company-card-top">
+        <div>
+          <div class="company-symbol">{{ c.symbol }}</div>
+          <div class="company-name">{{ c.company_name|truncatechars:35 }}</div>
+        </div>
+        <span class="badge badge-{{ c.health_label }}">{{ c.health_label }}</span>
+      </div>
+      <div class="company-metrics mt-1">
+        <div class="metric">
+          <div class="metric-val" style="color:{{ c.label_color }};">{{ c.health_score }}</div>
+          <div class="metric-lbl">Health Score</div>
+        </div>
+        {% if c.roce %}
+        <div class="metric">
+          <div class="metric-val">{{ c.roce }}%</div>
+          <div class="metric-lbl">ROCE</div>
+        </div>
+        {% endif %}
+        {% if c.roe %}
+        <div class="metric">
+          <div class="metric-val">{{ c.roe }}%</div>
+          <div class="metric-lbl">ROE</div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="mt-1">
+        <div style="width:100%;height:5px;background:#eee;border-radius:3px;">
+          <div style="width:{{ c.health_score }}%;height:100%;background:{{ c.label_color }};border-radius:3px;"></div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-3">
+    <a href="/companies/" class="btn btn-outline">← All Companies</a>
+  </div>
+
+</div>
+{% endblock %}

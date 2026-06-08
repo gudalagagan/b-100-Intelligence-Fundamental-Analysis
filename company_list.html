@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Compare Companies — Bluestock Fintech{% endblock %}
+{% block nav_compare %}active{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="page-title">⚖ Compare Companies</h1>
+  <p class="page-sub">Select up to 4 companies for a side-by-side financial comparison</p>
+
+  <!-- SELECTOR -->
+  <div class="card mb-2">
+    <div class="card-body">
+      <form method="get" class="flex gap-2 flex-wrap items-center">
+        {% for i in "1234" %}
+        <select name="s" class="form-control" style="width:220px;">
+          <option value="">— Pick company {{ forloop.counter }} —</option>
+          {% for c in all_companies %}
+          <option value="{{ c.symbol }}"
+            {% if c.symbol in selected_symbols %}selected{% endif %}>
+            {{ c.symbol }} — {{ c.company_name|truncatechars:30 }}
+          </option>
+          {% endfor %}
+        </select>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Compare →</button>
+        <a href="/compare/" class="btn btn-ghost">Reset</a>
+      </form>
+    </div>
+  </div>
+
+  {% if companies %}
+  <!-- COMPARISON TABLE -->
+  <div class="table-wrap mb-2">
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          {% for c in companies %}<th>{{ c.symbol }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="font-bold">Company</td>
+          {% for c in companies %}<td><small>{{ c.company_name|truncatechars:25 }}</small></td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">Sector</td>
+          {% for c in companies %}<td><span class="pill">{{ c.sector }}</span></td>{% endfor %}
+        </tr>
+        <tr style="background:#f0f4f8;"><td class="font-bold">Health Score</td>
+          {% for c in companies %}
+          <td><strong style="font-size:1.1rem;color:{{ c.label_color }};">{{ c.health_score }}</strong>
+            <span class="badge badge-{{ c.health_label }}">{{ c.health_label }}</span></td>
+          {% endfor %}
+        </tr>
+        <tr><td class="font-bold">Revenue (₹Cr)</td>
+          {% for c in companies %}<td>{{ c.latest_sales|default:"—" }}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">Net Profit (₹Cr)</td>
+          {% for c in companies %}<td>{{ c.latest_profit|default:"—" }}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">OPM%</td>
+          {% for c in companies %}<td>{% if c.latest_opm %}{{ c.latest_opm|floatformat:1 }}%{% else %}—{% endif %}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">EPS (₹)</td>
+          {% for c in companies %}<td>{{ c.latest_eps|default:"—" }}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">Debt/Equity</td>
+          {% for c in companies %}<td>{% if c.latest_de %}{{ c.latest_de|floatformat:2 }}x{% else %}—{% endif %}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">ROCE%</td>
+          {% for c in companies %}<td>{{ c.roce|default:"—" }}{% if c.roce %}%{% endif %}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">ROE%</td>
+          {% for c in companies %}<td>{{ c.roe|default:"—" }}{% if c.roe %}%{% endif %}</td>{% endfor %}
+        </tr>
+        <tr><td class="font-bold">Book Value (₹)</td>
+          {% for c in companies %}<td>{{ c.book_value|default:"—" }}</td>{% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- REVENUE COMPARISON CHART -->
+  <div class="chart-card mb-2">
+    <div class="chart-title">Revenue Trend Comparison (₹ Crore)</div>
+    <div class="chart-wrap" style="height:320px;"><canvas id="compareChart"></canvas></div>
+  </div>
+
+  <script>
+  const CD = {{ chart_data_json|safe }};
+  const LABELS = {{ labels_json|safe }};
+  const COLORS = ['#2E75B6','#2ECC71','#E74C3C','#F39C12'];
+  if(CD.length>0){
+    const datasets = CD.map((d,i)=>({
+      label: LABELS[i]||'Company '+(i+1),
+      data: d.sales,
+      borderColor: COLORS[i],
+      backgroundColor: 'transparent',
+      tension: .3, pointRadius:4, borderWidth:2,
+    }));
+    // Use the longest year array as labels
+    const yrs = CD.reduce((a,b)=>a.years.length>b.years.length?a:b).years;
+    new Chart(document.getElementById('compareChart'),{
+      type:'line',
+      data:{labels:yrs, datasets:datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{font:{size:11}}}},
+        scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}}
+    });
+  }
+  </script>
+
+  {% else %}
+  <div class="card"><div class="card-body text-muted" style="text-align:center;padding:3rem;">
+    Select 2–4 companies above to start comparing
+  </div></div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Bluestock Fintech — B100 Dashboard{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<div style="background:linear-gradient(135deg,var(--blue-dark),var(--blue-mid));
+            padding:3.5rem 2rem;text-align:center;color:#fff;">
+  <h1 style="font-size:2.2rem;font-weight:800;margin-bottom:.5rem;">
+    B100 Financial Intelligence
+  </h1>
+  <p style="opacity:.8;font-size:1rem;margin-bottom:2rem;">
+    Complete financial data, health scores &amp; insights for India's top 100 companies
+  </p>
+  <form method="get" action="/" style="display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap;">
+    <input name="q" value="{{ query }}" placeholder="Search by company name or symbol…"
+      style="padding:.75rem 1.25rem;border-radius:10px;border:none;font-size:1rem;
+             width:360px;max-width:90vw;box-shadow:0 4px 20px rgba(0,0,0,.2);">
+    <button type="submit" class="btn btn-primary" style="padding:.75rem 1.5rem;font-size:1rem;">
+      🔍 Search
+    </button>
+  </form>
+</div>
+
+<div class="container">
+
+  <!-- SEARCH RESULTS -->
+  {% if query and search_results %}
+  <div class="card mt-2">
+    <div class="card-header">Search results for "{{ query }}" — {{ search_results|length }} found</div>
+    <div class="card-body">
+      <div class="company-cards">
+        {% for c in search_results %}
+        <a href="/company/{{ c.symbol }}/" class="company-card">
+          <div class="company-card-top">
+            <div>
+              <div class="company-symbol">{{ c.symbol }}</div>
+              <div class="company-name">{{ c.company_name }}</div>
+            </div>
+            <span class="badge badge-{{ c.health_label }}">{{ c.health_label }}</span>
+          </div>
+          <div class="pill">{{ c.sector }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% elif query %}
+  <div class="card mt-2"><div class="card-body text-muted">No results for "{{ query }}"</div></div>
+  {% endif %}
+
+  <!-- KPIs -->
+  <div class="kpi-grid mt-3">
+    <div class="kpi">
+      <div class="kpi-value">{{ total }}</div>
+      <div class="kpi-label">Companies Tracked</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value" style="color:var(--green);">{{ label_counts.EXCELLENT|default:0 }}</div>
+      <div class="kpi-label">Excellent Health</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value" style="color:var(--orange);">{{ label_counts.AVERAGE|default:0 }}</div>
+      <div class="kpi-label">Average Health</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value" style="color:var(--red);">{{ label_counts.POOR|default:0 }}</div>
+      <div class="kpi-label">Needs Attention</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">{{ sectors|length }}</div>
+      <div class="kpi-label">Sectors Covered</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-value">12</div>
+      <div class="kpi-label">Years of Data</div>
+    </div>
+  </div>
+
+  <!-- FEATURED COMPANIES -->
+  <h2 class="page-title">🏆 Top Companies by Health Score</h2>
+  <p class="page-sub">Ranked by our ML-powered financial health engine</p>
+  <div class="company-cards">
+    {% for c in featured %}
+    <a href="/company/{{ c.symbol }}/" class="company-card">
+      <div class="company-card-top">
+        <div>
+          <div class="company-symbol">{{ c.symbol }}</div>
+          <div class="company-name">{{ c.company_name }}</div>
+        </div>
+        <span class="badge badge-{{ c.health_label }}">{{ c.health_label }}</span>
+      </div>
+      <div class="company-metrics mt-1">
+        <div class="metric">
+          <div class="metric-val">{{ c.health_score }}</div>
+          <div class="metric-lbl">Health Score</div>
+        </div>
+        {% if c.roce %}
+        <div class="metric">
+          <div class="metric-val">{{ c.roce }}%</div>
+          <div class="metric-lbl">ROCE</div>
+        </div>
+        {% endif %}
+        {% if c.roe %}
+        <div class="metric">
+          <div class="metric-val">{{ c.roe }}%</div>
+          <div class="metric-lbl">ROE</div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="mt-1"><span class="pill">{{ c.sector }}</span></div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-2 mb-2 flex gap-2">
+    <a href="/companies/" class="btn btn-primary">View All 100 Companies →</a>
+    <a href="/screener/" class="btn btn-outline">Use Screener</a>
+  </div>
+
+  <!-- SECTORS -->
+  <h2 class="page-title mt-3">📂 Explore by Sector</h2>
+  <p class="page-sub">Click any sector to see all companies</p>
+  <div class="sector-grid">
+    {% for s in sectors %}
+    <a href="/sector/{{ s.sector }}/" class="sector-card">
+      <div class="sector-name">{{ s.sector }}</div>
+      <div class="sector-count">{{ s.company_count }} companies · Avg score {{ s.avg_score }}</div>
+      <div class="sector-score-bar">
+        <div class="sector-score-fill" style="width:{{ s.avg_score }}%;"></div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
